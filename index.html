@@ -49,6 +49,11 @@
   .wd-dot{display:none;width:9px;height:9px;border-radius:50%;background:#3fae6a}
   .panel.collapsed .wd-dot.on{display:inline-block}
   @media(max-width:600px){.panel{max-width:calc(100vw - 24px);right:12px}}
+  #locate{position:absolute;bottom:22px;right:14px;z-index:1100;width:46px;height:46px;
+    border-radius:50%;border:1px solid var(--line);background:rgba(20,27,33,.95);color:var(--ink);
+    font-size:1.4rem;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.4);display:flex;
+    align-items:center;justify-content:center}
+  #locate.on{background:#356a80;color:#fff}
 </style>
 </head>
 <body>
@@ -59,6 +64,7 @@
   <a href="node.html">Min node</a>
   <a href="about.html">Om</a>
 </nav>
+<button id="locate" title="Min posisjon">&#9678;</button>
 <div class="panel" id="panel">
   <div class="panel-head" id="phead"><h1>Hunter <span class="wd-dot" id="wd-dot2"></span></h1><span class="chev">&#9662;</span></div>
   <div class="panel-body">
@@ -197,6 +203,25 @@ async function loadSurvey(){
 }
 document.getElementById("t-survey").onchange=e=>{
   if(e.target.checked){map.addLayer(surveyLayer);loadSurvey();}else map.removeLayer(surveyLayer);
+};
+// Min posisjon — alltid tilgjengelig (uavhengig av wardrive)
+var meWatch=null, meMarker=null, meCircle=null, meFirst=true;
+document.getElementById("locate").onclick=function(){
+  var b=document.getElementById("locate");
+  if(meWatch!=null){ navigator.geolocation.clearWatch(meWatch); meWatch=null;
+    if(meMarker){map.removeLayer(meMarker);meMarker=null;} if(meCircle){map.removeLayer(meCircle);meCircle=null;}
+    b.classList.remove("on"); return; }
+  if(!navigator.geolocation){alert("Enheten har ikke GPS/geolocation.");return;}
+  b.classList.add("on"); meFirst=true;
+  meWatch=navigator.geolocation.watchPosition(function(pos){
+    var lat=pos.coords.latitude, lon=pos.coords.longitude, acc=pos.coords.accuracy||30;
+    if(!meMarker){
+      meMarker=L.circleMarker([lat,lon],{radius:7,color:"#4aa3ff",weight:3,fillColor:"#4aa3ff",fillOpacity:.6}).addTo(map).bindPopup("Du er her");
+      meCircle=L.circle([lat,lon],{radius:acc,color:"#4aa3ff",weight:1,fillColor:"#4aa3ff",fillOpacity:.08}).addTo(map);
+    } else { meMarker.setLatLng([lat,lon]); meCircle.setLatLng([lat,lon]).setRadius(acc); }
+    if(meFirst){ map.setView([lat,lon],16); meFirst=false; }
+  }, function(e){ alert("GPS-feil: "+e.message); b.classList.remove("on"); },
+     {enableHighAccuracy:true,maximumAge:2000,timeout:10000});
 };
 var panelEl=document.getElementById("panel");
 document.getElementById("phead").onclick=function(){panelEl.classList.toggle("collapsed");};
