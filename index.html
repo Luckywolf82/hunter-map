@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="no">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Hunter — kart</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+  :root{--bg:#0b0f12;--ink:#e6ebed;--mut:#8d979e;--line:#243038;
+        --info:#5b6870;--low:#356a80;--med:#966c12;--high:#b03a24;--infra:#3fae6a;--pilot:#7a5cc2}
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);
+    font:14px/1.5 system-ui,sans-serif}
+  #map{position:absolute;inset:0}
+  .panel{position:absolute;top:56px;left:12px;z-index:1000;background:rgba(20,27,33,.94);
+    border:1px solid var(--line);border-radius:6px;padding:12px 14px;max-width:280px;
+    backdrop-filter:blur(4px)}
+  .panel h1{margin:0 0 2px;font-size:1.05rem}
+  .panel .sub{color:var(--mut);font-size:.78rem;margin-bottom:10px}
+  .stats{display:flex;gap:14px;margin-bottom:10px}
+  .stat b{font-size:1.25rem;font-variant-numeric:tabular-nums}
+  .stat span{display:block;color:var(--mut);font-size:.64rem;text-transform:uppercase;letter-spacing:.06em}
+  .legend{display:flex;flex-direction:column;gap:4px;font-size:.76rem;color:var(--mut)}
+  .legend i{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:7px;vertical-align:baseline}
+  .toggle{margin-top:10px;font-size:.76rem}
+  .toggle label{display:block;color:var(--mut);cursor:pointer;padding:1px 0}
+  .lp{position:absolute;bottom:8px;left:12px;z-index:1000;color:var(--mut);font-size:.68rem}
+  .leaflet-popup-content-wrapper{background:#141b21;color:var(--ink);border-radius:6px}
+  .leaflet-popup-tip{background:#141b21}
+  .leaflet-popup-content b{color:var(--ink)}
+  .pop .cat{font-size:.7rem;text-transform:uppercase;letter-spacing:.06em;color:var(--mut)}
+  .unv{opacity:.55}
+  nav{position:absolute;top:0;left:0;right:0;z-index:1200;display:flex;align-items:center;gap:4px;
+    padding:8px 14px;background:rgba(20,27,33,.94);border-bottom:1px solid var(--line);backdrop-filter:blur(4px)}
+  nav .brand{font-weight:700;margin-right:10px;font-size:.95rem}
+  nav a{color:var(--mut);text-decoration:none;padding:5px 11px;border-radius:5px;font-size:.85rem}
+  nav a:hover{color:var(--ink);background:rgba(255,255,255,.06)}
+  nav a.active{color:var(--ink);background:rgba(104,166,193,.2)}
+  .exp{display:flex;gap:6px;margin-top:8px}
+  .exp button{flex:1;font-size:.72rem;padding:5px;border-radius:4px;border:1px solid var(--line);
+    background:transparent;color:var(--mut);cursor:pointer}
+  .exp button:hover{color:var(--ink);border-color:var(--mut)}
+</style>
+</head>
+<body>
+<div id="map"></div>
+<nav>
+  <span class="brand">🛰️ Hunter</span>
+  <a href="index.html" class="active">Kart</a>
+  <a href="node.html">Min node</a>
+  <a href="about.html">Om</a>
+</nav>
+<div class="panel">
+  <h1>Hunter</h1>
+  <div class="sub">Overvåkning, kartlagt av nodenettverket</div>
+  <div class="stats">
+    <div class="stat"><b id="s-total">0</b><span>punkter</span></div>
+    <div class="stat"><b id="s-ver">0</b><span>bekreftet</span></div>
+    <div class="stat"><b id="s-nodes">0</b><span>noder</span></div>
+  </div>
+  <div class="legend">
+    <span><i style="background:var(--infra)"></i>Fast infra (kamera/ALPR)</span>
+    <span><i style="background:var(--high)"></i>Bodycam / mobil</span>
+    <span><i style="background:var(--med)"></i>Drone</span>
+    <span><i style="background:var(--pilot)"></i>Områdesikring (pilot)</span>
+    <span><i style="border:1px solid var(--mut);background:transparent"></i>Kjent basis (NVDB/OSM/TED)</span>
+  </div>
+  <div class="toggle">
+    <label><input type="checkbox" id="t-base" checked> Vis kjent basislag</label>
+    <label><input type="checkbox" id="t-live" checked> Vis node-treff</label>
+  </div>
+  <div style="margin-top:10px;border-top:1px solid var(--line);padding-top:10px">
+    <button id="wd-btn" style="width:100%;padding:8px;border-radius:4px;border:1px solid var(--line);
+      background:var(--infra);color:#0b0f12;font-weight:600;cursor:pointer">▶ Start wardrive</button>
+    <div id="wd-status" style="color:var(--mut);font-size:.72rem;margin-top:6px"></div>
+  </div>
+  <div class="exp">
+    <button id="exp-csv">Eksport CSV</button>
+    <button id="exp-kml">Eksport KML</button>
+  </div>
+</div>
+<div class="lp">Basis: NVDB · OpenStreetMap · TED. Live: hunter-noder. Kun overvåkningsutstyr — aldri sivile enheter.</div>
+
+<script src="config.js"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+// Sett denne til den deployede Worker-en. Tom = kun basislag (før deploy).
+const API = window.HUNTER_API || "";
+
+const COLOR = {infra:"#3fae6a", mobile:"#b03a24", drone:"#966c12", pilot:"#7a5cc2", base:"#8d979e"};
+const CATCOLOR = c => c==="pilot"?COLOR.pilot : (c==="dji"||c==="drone_rid")?COLOR.drone :
+  (c==="camera"||c==="alpr"||c==="flock")?COLOR.infra : COLOR.mobile;
+
+const map = L.map("map",{zoomControl:true}).setView([63.42, 10.40], 12); // Trondheim
+
+// Keyless base layers — switchable so you can see WHERE the points actually are.
+const streets = L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",
+  {subdomains:"abcd",maxZoom:20,attribution:"&copy; OSM &copy; CARTO"});
+const osm = L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+  {maxZoom:19,attribution:"&copy; OpenStreetMap"});
+const satImg = L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+  {maxZoom:19,attribution:"&copy; Esri"});
+const satLbl = L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}",
+  {maxZoom:19});
+const satellite = L.layerGroup([satImg, satLbl]);   // imagery + place labels
+const terrain = L.tileLayer("https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png",
+  {subdomains:"abc",maxZoom:17,attribution:"&copy; OpenTopoMap"});
+const dark = L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
+  {subdomains:"abcd",maxZoom:20,attribution:"&copy; OSM &copy; CARTO"});
+
+streets.addTo(map);   // default: streets + place names
+L.control.layers(
+  {"Gater": streets, "OSM": osm, "Satellitt": satellite, "Terreng": terrain, "Mørkt": dark},
+  null, {position:"topright"}
+).addTo(map);
+
+// External links per point — Street View, Google Maps, OSM at the coordinate.
+function links(lat,lon){
+  return `<div style="margin-top:6px;font-size:.72rem;line-height:1.8">`+
+    `<a href="https://www.google.com/maps?q=&layer=c&cbll=${lat},${lon}" target="_blank" rel="noopener">📍 Street View</a> · `+
+    `<a href="https://www.google.com/maps/search/?api=1&query=${lat},${lon}" target="_blank" rel="noopener">Google Maps</a> · `+
+    `<a href="https://www.openstreetmap.org/?mlat=${lat}&mlon=${lon}#map=18/${lat}/${lon}" target="_blank" rel="noopener">OSM</a></div>`;
+}
+
+const baseLayer = L.layerGroup().addTo(map);
+const liveLayer = L.layerGroup().addTo(map);
+
+function dot(lat,lon,color,radius,fill){
+  return L.circleMarker([lat,lon],{radius,color,weight:1.5,
+    fillColor:color,fillOpacity:fill,opacity:.9});
+}
+function ago(sec){var s=Math.floor(Date.now()/1000)-sec;if(s<3600)return Math.floor(s/60)+'m';
+  if(s<86400)return Math.floor(s/3600)+'t';return Math.floor(s/86400)+'d';}
+
+// Basislag — kjent kartlagt infrastruktur (statisk, med i repoet)
+fetch("corpus.geojson").then(r=>r.json()).then(fc=>{
+  fc.features.forEach(f=>{
+    const [lon,lat]=f.geometry.coordinates, p=f.properties;
+    const col = p.cat==="pilot"?COLOR.pilot:(p.cat==="alpr"?COLOR.infra:COLOR.base);
+    dot(lat,lon,p.cat==="alpr"?COLOR.infra:(p.cat==="pilot"?COLOR.pilot:"#555"),p.cat==="pilot"?6:4,p.cat==="pilot"?.6:.45).addTo(baseLayer)
+      .bindPopup(`<div class="pop"><span class="cat">${p.cat} · basis</span><br><b>${p.name||p.type}</b>`+
+        (p.vendor?`<br>${p.vendor}`:"")+links(lat,lon)+`</div>`);
+  });
+}).catch(()=>{});
+
+// Live-lag — node-treff fra Worker-en
+let lastPoints=[];
+async function loadLive(){
+  if(!API) return;
+  try{
+    const r=await fetch(API+"/api/points",{cache:"no-store"}); const fc=await r.json();
+    liveLayer.clearLayers();
+    lastPoints=fc.features||[];
+    (fc.features||[]).forEach(f=>{
+      const [lon,lat]=f.geometry.coordinates, p=f.properties, col=CATCOLOR(p.cat);
+      const m=dot(lat,lon,col,p.fixed?6:5,p.verified?.75:.3).addTo(liveLayer);
+      if(!p.verified) m.getElement && m._path && m._path.classList.add("unv");
+      m.bindPopup(`<div class="pop"><span class="cat">${p.cat} · ${p.verified?"bekreftet":"uverifisert"}</span><br>`+
+        `<b>${p.title}</b><br>${p.sightings} sightinger · ${p.nodes} node(r)<br>`+
+        `sist sett ${ago(p.last_seen)} siden`+links(lat,lon)+`</div>`);
+    });
+  }catch(e){}
+  try{
+    const s=await (await fetch(API+"/api/stats",{cache:"no-store"})).json();
+    document.getElementById("s-total").textContent=s.total||0;
+    document.getElementById("s-ver").textContent=s.verified||0;
+    document.getElementById("s-nodes").textContent=s.nodes||0;
+  }catch(e){}
+}
+loadLive(); setInterval(loadLive, 15000);
+
+document.getElementById("t-base").onchange=e=>e.target.checked?map.addLayer(baseLayer):map.removeLayer(baseLayer);
+document.getElementById("t-live").onchange=e=>e.target.checked?map.addLayer(liveLayer):map.removeLayer(liveLayer);
+
+// --- Wardrive: telefonens GPS poster posisjon til Worker-en ---
+// Worker-en matcher nodens deteksjoner mot ferskt telefon-spor på tid, så treff
+// havner der telefonen faktisk var. Krever nodenøkkelen (samme som noden bruker).
+let wdWatch=null, wdKey=localStorage.getItem("hunter_node_key")||"", wdSent=0, wdMarker=null, wdLast=0;
+const wdBtn=document.getElementById("wd-btn"), wdStatus=document.getElementById("wd-status");
+
+async function postTrack(lat,lon){
+  if(!API||!wdKey) return;
+  try{
+    const r=await fetch(API+"/track",{method:"POST",
+      headers:{"Content-Type":"application/json","Authorization":"Bearer "+wdKey},
+      body:JSON.stringify({lat,lon})});
+    if(r.ok){wdSent++; wdStatus.innerHTML=`🛰️ wardrive aktiv · ${wdSent} posisjoner sendt<br>`+
+      `<span style="font-size:.68rem">${lat.toFixed(5)}, ${lon.toFixed(5)}</span>`;}
+    else{const e=await r.json(); wdStatus.textContent="feil: "+(e.error||r.status);}
+  }catch(e){ wdStatus.textContent="nettverksfeil"; }
+}
+
+function startWardrive(){
+  if(!navigator.geolocation){wdStatus.textContent="Enheten har ikke GPS/geolocation.";return;}
+  if(!wdKey){
+    wdKey=prompt("Lim inn nodenøkkelen (hk_...) for denne noden:")||"";
+    if(!wdKey) return;
+    localStorage.setItem("hunter_node_key",wdKey);
+  }
+  wdWatch=navigator.geolocation.watchPosition(pos=>{
+    const{latitude:lat,longitude:lon}=pos.coords, t=Date.now();
+    if(!wdMarker){wdMarker=L.circleMarker([lat,lon],{radius:8,color:"#3fae6a",weight:3,
+      fillColor:"#3fae6a",fillOpacity:.4}).addTo(map).bindPopup("Din posisjon");}
+    else wdMarker.setLatLng([lat,lon]);
+    map.setView([lat,lon]);
+    if(t-wdLast>4000){wdLast=t; postTrack(lat,lon);}   // strup til hvert 4. sek
+  }, err=>{ wdStatus.textContent="GPS-feil: "+err.message; },
+     {enableHighAccuracy:true,maximumAge:2000,timeout:10000});
+  wdBtn.textContent="■ Stopp wardrive"; wdBtn.style.background="var(--high)"; wdBtn.style.color="#fff";
+  wdStatus.textContent="🛰️ starter GPS …";
+}
+function stopWardrive(){
+  if(wdWatch!=null) navigator.geolocation.clearWatch(wdWatch);
+  wdWatch=null;
+  if(wdMarker){map.removeLayer(wdMarker); wdMarker=null;}
+  wdBtn.textContent="▶ Start wardrive"; wdBtn.style.background="var(--infra)"; wdBtn.style.color="#0b0f12";
+  wdStatus.textContent=wdSent?`stoppet · ${wdSent} posisjoner sendt denne økta`:"";
+}
+wdBtn.onclick=()=> wdWatch==null ? startWardrive() : stopWardrive();
+
+// --- Eksport (inspirert av Flock-You: JSON/CSV/KML for Google Earth) ---
+function dl(name,txt,mime){const b=new Blob([txt],{type:mime});const a=document.createElement("a");
+  a.href=URL.createObjectURL(b);a.download=name;a.click();URL.revokeObjectURL(a.href);}
+document.getElementById("exp-csv").onclick=()=>{
+  const rows=[["kategori","tittel","lat","lon","sightings","noder","bekreftet","sist_sett"]];
+  lastPoints.forEach(f=>{const p=f.properties,c=f.geometry.coordinates;
+    rows.push([p.cat,'"'+(p.title||"").replace(/"/g,'""')+'"',c[1],c[0],p.sightings,p.nodes,p.verified,
+      new Date(p.last_seen*1000).toISOString()]);});
+  dl("hunter.csv",rows.map(r=>r.join(",")).join("\n"),"text/csv");
+};
+document.getElementById("exp-kml").onclick=()=>{
+  const pm=lastPoints.map(f=>{const p=f.properties,c=f.geometry.coordinates;
+    return `<Placemark><name>${(p.title||p.cat).replace(/[<&]/g,"")}</name>`+
+      `<description>${p.cat} · ${p.verified?"bekreftet":"uverifisert"} · ${p.sightings} sightinger</description>`+
+      `<Point><coordinates>${c[0]},${c[1]}</coordinates></Point></Placemark>`;}).join("");
+  dl("hunter.kml",`<?xml version="1.0"?><kml xmlns="http://www.opengis.net/kml/2.2"><Document>`+
+    `<name>Hunter — overvåkning</name>${pm}</Document></kml>`,"application/vnd.google-earth.kml+xml");
+};
+</script>
+</body>
+</html>

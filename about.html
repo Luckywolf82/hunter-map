@@ -1,0 +1,31 @@
+<!doctype html><html lang="no"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1"><title>Hunter — om</title>
+<style>
+:root{--bg:#0b0f12;--card:#141b21;--ink:#e6ebed;--mut:#8d979e;--line:#243038;--acc:#68a6c1}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.65 system-ui,sans-serif}
+nav{display:flex;align-items:center;gap:4px;padding:10px 16px;border-bottom:1px solid var(--line);background:var(--card);position:sticky;top:0}
+nav .brand{font-weight:700;margin-right:12px}nav a{color:var(--mut);text-decoration:none;padding:6px 12px;border-radius:5px;font-size:.9rem}
+nav a:hover{color:var(--ink);background:rgba(255,255,255,.05)}nav a.active{color:var(--ink);background:rgba(104,166,193,.18)}
+.wrap{max-width:640px;margin:0 auto;padding:24px 16px 60px}h1{font-size:1.5rem}h2{font-size:1.05rem;margin-top:28px}
+a{color:var(--acc)}code{background:var(--card);border:1px solid var(--line);border-radius:3px;padding:1px 5px;font-family:ui-monospace,monospace;font-size:.85rem}
+.pill{display:inline-block;background:rgba(63,174,106,.15);border:1px solid rgba(63,174,106,.4);color:#8fe0af;border-radius:20px;padding:2px 10px;font-size:.8rem}
+</style></head><body>
+<nav><span class="brand">🛰️ Hunter</span><a href="index.html">Kart</a><a href="node.html">Min node</a><a href="about.html" class="active">Om</a></nav>
+<div class="wrap">
+<h1>Om Hunter</h1>
+<p>Et crowdsourcet kart over overvåkningsutstyr, matet av et nettverk av billige noder.
+Snoop på dem som snooper på oss.</p>
+<p><span class="pill">Kun overvåkningsutstyr</span> — aldri sivile enheter. En forbipasserendes
+telefon blir aldri en hendelse; kun kjente overvåkningssignaturer (bodycams, ALPR, droner,
+kameraer) kartlegges.</p>
+<h2>Slik virker det</h2>
+<p>En passiv node lytter (BLE/WiFi), kjenner igjen overvåkningsutstyr, og laster opp treff til
+kartet. Under wardrive stempler telefonens GPS hvert treff der du faktisk var. Treff bekreftes
+over tid og av flere noder før de vises som sikre.</p>
+<h2>Personvern</h2>
+<p>Serveren tar kun imot ikke-personlige deteksjoner (<code>personal:false</code>), og bare kjente
+overvåkningskategorier. Vi publiserer alt vi fanger, fordi vi bare fanger overvåkere.</p>
+<h2>Grunnlag</h2>
+<p>Basislaget er kjent infrastruktur fra NVDB, OpenStreetMap og offentlige anskaffelser (TED).
+Inspirert av EFF Rayhunter, OUI-Spy og DeFlock.</p>
+</div></body></html>
