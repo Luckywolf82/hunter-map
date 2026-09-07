@@ -68,6 +68,7 @@
   <div class="toggle">
     <label><input type="checkbox" id="t-base" checked> Vis kjent basislag</label>
     <label><input type="checkbox" id="t-live" checked> Vis node-treff</label>
+    <label><input type="checkbox" id="t-survey"> Vis survey (vendor-OUIer)</label>
   </div>
   <div style="margin-top:10px;border-top:1px solid var(--line);padding-top:10px">
     <button id="wd-btn" style="width:100%;padding:8px;border-radius:4px;border:1px solid var(--line);
@@ -124,6 +125,7 @@ function links(lat,lon){
 
 const baseLayer = L.layerGroup().addTo(map);
 const liveLayer = L.layerGroup().addTo(map);
+const surveyLayer = L.layerGroup();
 
 function dot(lat,lon,color,radius,fill){
   return L.circleMarker([lat,lon],{radius,color,weight:1.5,
@@ -167,7 +169,26 @@ async function loadLive(){
     document.getElementById("s-nodes").textContent=s.nodes||0;
   }catch(e){}
 }
+async function loadSurvey(){
+  if(!API||!map.hasLayer(surveyLayer)) return;
+  try{
+    const r=await fetch(API+"/api/survey",{cache:"no-store"}); const fc=await r.json();
+    surveyLayer.clearLayers();
+    (fc.features||[]).forEach(f=>{
+      const [lon,lat]=f.geometry.coordinates, p=f.properties;
+      const col=p.interesting?"#e07a3c":"#4a5560";
+      L.circleMarker([lat,lon],{radius:p.interesting?5:3,color:col,weight:1,
+        fillColor:col,fillOpacity:p.interesting?.8:.35}).addTo(surveyLayer)
+       .bindPopup(`<div class="pop"><span class="cat">survey${p.interesting?" - overvakningsvendor":""}</span><br>`+
+         `<b>${p.vendor||("OUI "+p.oui)}</b><br>OUI ${p.oui} - ${p.count}x - ${p.rssi} dBm</div>`);
+    });
+  }catch(e){}
+}
+document.getElementById("t-survey").onchange=e=>{
+  if(e.target.checked){map.addLayer(surveyLayer);loadSurvey();}else map.removeLayer(surveyLayer);
+};
 loadLive(); setInterval(loadLive, 15000);
+setInterval(loadSurvey, 20000);
 
 document.getElementById("t-base").onchange=e=>e.target.checked?map.addLayer(baseLayer):map.removeLayer(baseLayer);
 document.getElementById("t-live").onchange=e=>e.target.checked?map.addLayer(liveLayer):map.removeLayer(liveLayer);
