@@ -118,7 +118,9 @@ async function verify(){
         `<b>✓ Gyldig</b> — node <b>${d.node_id}</b><br>`+
         `<div class="kv"><span>Opplastinger</span><b>${d.push_count||0}</b></div>`+
         `<div class="kv"><span>Sist opplasting</span><b>${last}</b></div>`+
-        `<div class="kv"><span>Registrert</span><b>${d.contact||"—"}</b></div>`);
+        `<div class="kv"><span>Registrert</span><b>${d.contact||"—"}</b></div>`+
+        (d.last_ip?`<div style="margin-top:8px"><a href="http://${d.last_ip}/hunter" target="_blank">Åpne nodens dashboard (${d.last_ip}) →</a></div>`:
+         `<div class="hint" style="margin-top:8px">Nodens dashboard-adresse vises her etter første opplasting. Prøv ellers <a href="http://corvus.local/hunter" target="_blank">corvus.local/hunter</a>.</div>`));
     } else setStatus("err", "✗ "+(d.error||"ugyldig nøkkel"));
   }catch(e){ setStatus("err","Nettverksfeil: "+e.message); }
 }
@@ -126,7 +128,7 @@ $("save").onclick = verify;
 function setStatus(cls,html){ const s=$("status"); s.className="status "+(cls||""); s.innerHTML=html; }
 
 // dashboard-lenke: prøv corvus.local, ellers be bruker om IP
-$("dash").href = "http://192.168.4.1/hunter";
+$("dash").href = "http://corvus.local/hunter";
 
 if($("key").value) verify();
 </script>
