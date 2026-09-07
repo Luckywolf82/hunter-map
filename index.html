@@ -4,6 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Hunter — kart</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0b0f12">
+<link rel="apple-touch-icon" href="icon-192.png">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <style>
   :root{--bg:#0b0f12;--ink:#e6ebed;--mut:#8d979e;--line:#243038;
@@ -95,6 +98,7 @@
     <button id="exp-csv">Eksport CSV</button>
     <button id="exp-kml">Eksport KML</button>
   </div>
+  <button id="fitall" style="width:100%;margin-top:8px;font-size:.75rem;padding:6px;border-radius:4px;border:1px solid var(--line);background:transparent;color:var(--mut);cursor:pointer">Zoom til alle punkter</button>
   </div>
 </div>
 <div class="lp">Basis: NVDB · OpenStreetMap · TED. Live: hunter-noder. Kun overvåkningsutstyr — aldri sivile enheter.</div>
@@ -228,6 +232,15 @@ document.getElementById("phead").onclick=function(){panelEl.classList.toggle("co
 if(window.innerWidth<600) panelEl.classList.add("collapsed");
 loadLive(); setInterval(loadLive, 15000);
 setInterval(loadSurvey, 20000);
+// PWA
+if("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(function(){});
+// Zoom til alle punkter (basis + live)
+document.getElementById("fitall").onclick=function(){
+  var pts=[];
+  baseLayer.eachLayer(function(l){if(l.getLatLng)pts.push(l.getLatLng());});
+  liveLayer.eachLayer(function(l){if(l.getLatLng)pts.push(l.getLatLng());});
+  if(pts.length) map.fitBounds(L.latLngBounds(pts).pad(0.1));
+};
 
 document.getElementById("t-base").onchange=e=>e.target.checked?map.addLayer(baseLayer):map.removeLayer(baseLayer);
 document.getElementById("t-live").onchange=e=>e.target.checked?map.addLayer(liveLayer):map.removeLayer(liveLayer);
