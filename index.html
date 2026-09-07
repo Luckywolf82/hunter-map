@@ -40,6 +40,15 @@
   .exp button{flex:1;font-size:.72rem;padding:5px;border-radius:4px;border:1px solid var(--line);
     background:transparent;color:var(--mut);cursor:pointer}
   .exp button:hover{color:var(--ink);border-color:var(--mut)}
+  .panel{max-height:calc(100vh - 72px);overflow-y:auto}
+  .panel-head{display:flex;align-items:center;justify-content:space-between;gap:8px;cursor:pointer}
+  .panel-head .chev{color:var(--mut);font-size:1.1rem;transition:transform .2s}
+  .panel.collapsed .panel-body{display:none}
+  .panel.collapsed{padding-bottom:12px}
+  .panel.collapsed .panel-head .chev{transform:rotate(-90deg)}
+  .wd-dot{display:none;width:9px;height:9px;border-radius:50%;background:#3fae6a}
+  .panel.collapsed .wd-dot.on{display:inline-block}
+  @media(max-width:600px){.panel{max-width:calc(100vw - 24px);right:12px}}
 </style>
 </head>
 <body>
@@ -50,8 +59,9 @@
   <a href="node.html">Min node</a>
   <a href="about.html">Om</a>
 </nav>
-<div class="panel">
-  <h1>Hunter</h1>
+<div class="panel" id="panel">
+  <div class="panel-head" id="phead"><h1>Hunter <span class="wd-dot" id="wd-dot2"></span></h1><span class="chev">&#9662;</span></div>
+  <div class="panel-body">
   <div class="sub">Overvåkning, kartlagt av nodenettverket</div>
   <div class="stats">
     <div class="stat"><b id="s-total">0</b><span>punkter</span></div>
@@ -78,6 +88,7 @@
   <div class="exp">
     <button id="exp-csv">Eksport CSV</button>
     <button id="exp-kml">Eksport KML</button>
+  </div>
   </div>
 </div>
 <div class="lp">Basis: NVDB · OpenStreetMap · TED. Live: hunter-noder. Kun overvåkningsutstyr — aldri sivile enheter.</div>
@@ -187,6 +198,9 @@ async function loadSurvey(){
 document.getElementById("t-survey").onchange=e=>{
   if(e.target.checked){map.addLayer(surveyLayer);loadSurvey();}else map.removeLayer(surveyLayer);
 };
+var panelEl=document.getElementById("panel");
+document.getElementById("phead").onclick=function(){panelEl.classList.toggle("collapsed");};
+if(window.innerWidth<600) panelEl.classList.add("collapsed");
 loadLive(); setInterval(loadLive, 15000);
 setInterval(loadSurvey, 20000);
 
@@ -228,6 +242,7 @@ function startWardrive(){
   }, err=>{ wdStatus.textContent="GPS-feil: "+err.message; },
      {enableHighAccuracy:true,maximumAge:2000,timeout:10000});
   wdBtn.textContent="■ Stopp wardrive"; wdBtn.style.background="var(--high)"; wdBtn.style.color="#fff";
+  document.getElementById("wd-dot2").classList.add("on");
   wdStatus.textContent="🛰️ starter GPS …";
 }
 function stopWardrive(){
@@ -235,6 +250,7 @@ function stopWardrive(){
   wdWatch=null;
   if(wdMarker){map.removeLayer(wdMarker); wdMarker=null;}
   wdBtn.textContent="▶ Start wardrive"; wdBtn.style.background="var(--infra)"; wdBtn.style.color="#0b0f12";
+  document.getElementById("wd-dot2").classList.remove("on");
   wdStatus.textContent=wdSent?`stoppet · ${wdSent} posisjoner sendt denne økta`:"";
 }
 wdBtn.onclick=()=> wdWatch==null ? startWardrive() : stopWardrive();
