@@ -73,9 +73,10 @@
       så har den internett via mobilen mens du kjører:</p>
     <ol>
       <li>Slå på <b>internettdeling / hotspot</b> på telefonen (med mobildata på).</li>
-      <li>Sett noden på hotspot-nettet. Enten via nodens oppsettsportal
-        (koble til wifi <code>Corvus-…</code> → åpne <code>192.168.4.1</code>), eller over serie:
-        <br><code>wifi --set --ssid DITT_HOTSPOT --password PASSORD --apply</code></li>
+      <li>Koble telefonen til nodens eget wifi <code>Corvus-…</code>, åpne nodens dashboard
+        (<code>192.168.4.1/hunter</code>), og bruk <b>📶 Wifi / hotspot</b>-seksjonen der:
+        trykk <b>Skann</b>, velg hotspotet ditt, skriv passordet, trykk <b>Koble til</b>.
+        <br><span class="hint">(Alternativt over serie: <code>wifi --set --ssid DITT_HOTSPOT --password PASSORD --apply</code>)</span></li>
       <li>Åpne <b>Kart → Start wardrive</b> på telefonen. Kjør. Treff dukker opp der du var.</li>
     </ol>
     <p class="hint">Telefonen når både noden (hotspot) og kart-serveren (mobildata) samtidig —
@@ -125,7 +126,7 @@ $("save").onclick = verify;
 function setStatus(cls,html){ const s=$("status"); s.className="status "+(cls||""); s.innerHTML=html; }
 
 // dashboard-lenke: prøv corvus.local, ellers be bruker om IP
-$("dash").href = "http://corvus.local/hunter";
+$("dash").href = "http://192.168.4.1/hunter";
 
 if($("key").value) verify();
 </script>
